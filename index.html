@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>にゃんこ育成計算道場</title>
+    
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f0f0f0;
+            margin: 0;
+            overflow: hidden; /* モーダル表示時のスクロールバーを抑制 */
+        }
+        
+        /* 🌟 ゲーム画面は初期非表示 */
+        #app {
+            display: none; 
+            width: 100%;
+            max-width: 450px;
+            background-color: #fff;
+            border: 3px solid #333;
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        #stats p {
+            margin: 5px 0;
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+
+        #game-area {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #character-container {
+            margin-bottom: 15px;
+        }
+
+        #character-img {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            border: 2px solid #ccc;
+            border-radius: 5px;
+            background-color: #eee;
+        }
+
+        #question-box {
+            font-size: 2.5em;
+            font-weight: 900;
+            margin: 20px 0;
+        }
+
+        #answer-display {
+            min-width: 50px;
+            display: inline-block;
+            border-bottom: 3px solid #ff4500;
+            color: #ff4500;
+            padding: 0 5px;
+        }
+
+        #result-message {
+            height: 30px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: green;
+        }
+
+        #input-pad {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .num-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .num-btn, #clear-btn, #submit-btn {
+            flex-grow: 1;
+            padding: 15px 0;
+            margin: 0 5px;
+            font-size: 1.5em;
+            cursor: pointer;
+            border: 2px solid #333;
+            border-radius: 8px;
+            background-color: #ffe082; 
+        }
+
+        #submit-btn {
+            background-color: #ff6347; 
+            color: white;
+        }
+
+        footer {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+
+        footer button, footer select {
+            padding: 8px;
+            cursor: pointer;
+            border: 1px solid #333;
+            border-radius: 5px;
+        }
+
+        /* --- 🌟 汎用モーダルスタイル --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: none; /* JSで制御 */
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background-color: #fff;
+            padding: 20px 30px;
+            border-radius: 10px;
+            text-align: center;
+            max-width: 90%;
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+        }
+        
+        .modal-content h2 {
+            margin-top: 0;
+        }
+        
+        /* 🌟 タイトル画面スタイル */
+        #title-screen {
+            display: flex; /* 初期表示 */
+        }
+        .title-container {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .title-container button {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-top: 15px;
+            font-size: 1.2em;
+            cursor: pointer;
+        }
+        
+        /* 🌟 セーブスロットスタイル */
+        .slot-preview {
+            border: 2px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            text-align: left;
+        }
+        .slot-preview:hover {
+            background-color: #f0f0f0;
+        }
+        .slot-preview.empty {
+            color: #999;
+            text-align: center;
+        }
+        .modal-content button {
+             margin-top: 20px;
+             padding: 10px 15px;
+             font-size: 1em;
+        }
+
+        /* 🌟 キャラクター選択モーダル */
+        #character-options {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .char-option {
+            cursor: pointer;
+            border: 3px solid #ccc;
+            border-radius: 10px;
+            padding: 10px;
+            transition: all 0.2s;
+            width: 100px;
+            text-align: center;
+        }
+
+        .char-option:hover {
+            border-color: #ff6347;
+            transform: scale(1.05);
+        }
+
+        .char-option img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+        
+        /* 🌟 ユーザーネーム入力 */
+        #username-input {
+            padding: 10px;
+            font-size: 1.1em;
+            margin-top: 10px;
+            width: 80%;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="title-screen" class="modal-overlay">
+        <div class="title-container">
+            <h1>にゃんこ育成計算道場</h1>
+            <button id="title-new-game">ニューゲーム</button>
+            <button id="title-load-game">ロードゲーム</button>
+            <button id="title-delete-data">データ削除</button>
+        </div>
+    </div>
+    
+    <div id="load-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>ロードするデータを選んでください</h2>
+            <div id="load-slot-container">
+                </div>
+            <button id="load-cancel">もどる</button>
+        </div>
+    </div>
+    
+    <div id="delete-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>削除するデータを選んでください</h2>
+            <div id="delete-slot-container">
+                </div>
+            <button id="delete-cancel">もどる</button>
+        </div>
+    </div>
+    
+    <div id="new-game-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>ユーザーネームを入力してください</h2>
+            <input type="text" id="username-input" placeholder="にゃんこマスター" maxlength="10">
+            <button id="username-submit">決定</button>
+            <button id="new-game-cancel">もどる</button>
+        </div>
+    </div>
+
+    <div id="character-select-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>育成するにゃんこを選ぼう！</h2>
+            <div id="character-options">
+                <div class="char-option" data-char="giraffe">
+                    <img src="images/char_giraffe_cat.png" alt="キリン型">
+                    <p>キリン型</p>
+                </div>
+                <div class="char-option" data-char="sumo">
+                    <img src="images/char_sumo_cat.png" alt="力士型">
+                    <p>力士型</p>
+                </div>
+                <div class="char-option" data-char="ghost">
+                    <img src="images/char_ghost_cat.png" alt="お化け型">
+                    <p>お化け型</p>
+                </div>
+                <div class="char-option" data-char="fishbone">
+                    <img src="images/char_fishbone_cat.png" alt="骨魚型">
+                    <p>骨魚型</p>
+                </div>
+                <div class="char-option" data-char="mecha">
+                    <img src="images/mecha_cat.png" alt="メカ型">
+                    <p>メカ型</p>
+                </div>
+            </div>
+            </div>
+    </div>
+    
+    <div id="app">
+        <header>
+            <div id="stats">
+                <p>Lv: <span id="level">1</span></p>
+                <p>EXP: <span id="exp">0</span> / <span id="exp-needed">100</span></p>
+            </div>
+            <button id="bgm-toggle">BGM ON/OFF</button>
+        </header>
+
+        <main>
+            <div id="game-area">
+                <div id="character-container">
+                    <img id="character-img" src="" alt="育成キャラ">
+                    <div id="char-name">キャラクター未選択</div>
+                </div>
+
+                <div id="question-box">
+                    <span id="num1">0</span> + <span id="num2">0</span> = 
+                    <span id="answer-display" class="highlight">?</span>
+                </div>
+                <div id="result-message"></div>
+            </div>
+
+            <div id="input-pad">
+                <div class="num-row">
+                    <button class="num-btn" data-val="1">1</button>
+                    <button class="num-btn" data-val="2">2</button>
+                    <button class="num-btn" data-val="3">3</button>
+                </div>
+                <div class="num-row">
+                    <button class="num-btn" data-val="4">4</button>
+                    <button class="num-btn" data-val="5">5</button>
+                    <button class="num-btn" data-val="6">6</button>
+                </div>
+                <div class="num-row">
+                    <button class="num-btn" data-val="7">7</button>
+                    <button class="num-btn" data-val="8">8</button>
+                    <button class="num-btn" data-val="9">9</button>
+                </div>
+                <div class="num-row">
+                    <button id="clear-btn">クリア</button>
+                    <button class="num-btn" data-val="0">0</button>
+                    <button id="submit-btn">決定</button>
+                </div>
+            </div>
+        </main>
+        
+        <footer>
+            <button id="save-btn">💾 セーブ</button>
+            <button id="load-btn">🔄 ロード</button> <select id="difficulty-select">
+                <option value="level1">レベル1 (1桁+1桁 繰り上がりなし)</option>
+                <option value="level2">レベル2 (1桁+1桁 繰り上がりあり)</option>
+                <option value="level3">レベル3 (2桁+1桁)</option>
+                <option value="level4">レベル4 (2桁+2桁 答え2桁)</option>
+                <option value="level5">レベル5 (2桁+2桁 答え3桁)</option>
+            </select>
+        </footer>
+    </div>
+
+    <audio id="bgm" loop src="audio/bgm.mp3"></audio>
+
+    <script>
+        // 💡 キャラクター定義
+        const CHARACTER_MAP = {
+            giraffe: { name: "キリン型", fileBase: "char_giraffe_cat" },
+            sumo: { name: "力士型", fileBase: "char_sumo_cat" },
+            ghost: { name: "お化け型", fileBase: "char_ghost_cat" },
+            fishbone: { name: "骨魚型", fileBase: "char_fishbone_cat" },
+            mecha: { name: "メカ型", fileBase: "mecha_cat" },
+        };
+
+        // 💡 難易度レベルの定義と獲得EXP
+        const LEVEL_MAP = {
+            level1: { name: "レベル1", exp: 20 },
+            level2: { name: "レベル2", exp: 30 },
+            level3: { name: "レベル3", exp: 50 },
+            level4: { name: "レベル4", exp: 60 },
+            level5: { name: "レベル5", exp: 100 },
+        };
+
+        // --- ゲーム状態管理 ---
+        const initialGameState = {
+            level: 1, 
+            exp: 0,
+            expNeeded: 100,
+            difficulty: "level1",
+            charType: null, 
+            username: "",
+            currentSlot: null,
+            bgmOn: false,
+            evolutionLevels: [1, 5, 10] 
+        };
+        // 現在のゲーム状態を保持する変数
+        let gameState = { ...initialGameState };
+
+        // --- DOM要素 ---
+        const dom = {
+            // ゲーム画面
+            appScreen: document.getElementById('app'),
+            level: document.getElementById('level'),
+            exp: document.getElementById('exp'),
+            expNeeded: document.getElementById('exp-needed'),
+            num1: document.getElementById('num1'),
+            num2: document.getElementById('num2'),
+            answerDisplay: document.getElementById('answer-display'),
+            resultMessage: document.getElementById('result-message'),
+            characterImg: document.getElementById('character-img'),
+            charName: document.getElementById('char-name'),
+            inputPad: document.getElementById('input-pad'),
+            difficultySelect: document.getElementById('difficulty-select'),
+            bgm: document.getElementById('bgm'),
+            bgmToggle: document.getElementById('bgm-toggle'),
+            
+            // タイトル画面とモーダル
+            titleScreen: document.getElementById('title-screen'),
+            loadModal: document.getElementById('load-modal'),
+            deleteModal: document.getElementById('delete-modal'),
+            newGameModal: document.getElementById('new-game-modal'),
+            charSelectModal: document.getElementById('character-select-modal'),
+            
+            // コンテナ
+            loadSlotContainer: document.getElementById('load-slot-container'),
+            deleteSlotContainer: document.getElementById('delete-slot-container'),
+            charOptionsContainer: document.getElementById('character-options'),
+            
+            // 入力
+            usernameInput: document.getElementById('username-input'),
+        };
+
+        // --- セーブ/ロード 関連関数 ---
+
+        function getSaveKey(slotIndex) {
+            return `nya-calc-save-${slotIndex}`;
+        }
+        
+        function getSaveData(slotIndex) {
+            const data = localStorage.getItem(getSaveKey(slotIndex));
+            return data ? JSON.parse(data) : null;
+        }
+
+        function saveGame() {
+            if (gameState.currentSlot === null) {
+                console.error("セーブスロットが設定されていません。");
+                return;
+            }
+            try {
+                localStorage.setItem(getSaveKey(gameState.currentSlot), JSON.stringify(gameState));
+                // ゲーム画面内のセーブボタンから呼ばれた場合のみアラート
+                // if (dom.appScreen.style.display === 'block') {
+                //     alert('セーブしました！');
+                // }
+            } catch (e) {
+                alert('セーブに失敗しました。');
+            }
+        }
+        
+        function loadGame(slotIndex) {
+            const data = getSaveData(slotIndex);
+            if (data && data.charType) { // キャラ選択済みのデータのみロード
+                Object.assign(gameState, data); 
+                gameState.currentSlot = slotIndex; 
+                
+                dom.titleScreen.style.display = 'none';
+                dom.loadModal.style.display = 'none';
+                dom.appScreen.style.display = 'block'; 
+                
+                updateDisplay(); 
+                updateDifficultyOptions(); 
+                setQuestion(); 
+                
+                return true;
+            } else if (data && !data.charType) {
+                alert("キャラクター選択が完了していません。ニューゲームからやり直してください。");
+                // データは存在するが不正なので削除
+                deleteData(slotIndex, true); // 確認なしで削除
+                return false;
+            }
+            return false;
+        }
+        
+        function deleteData(slotIndex, silent = false) {
+            const data = getSaveData(slotIndex);
+            if (!data) {
+                alert("このスロットは空です");
+                return;
+            }
+            
+            const confirmation = silent ? true : confirm(`スロット${slotIndex + 1} (${data.username}) のデータを本当に削除しますか？`);
+            
+            if (confirmation) {
+                localStorage.removeItem(getSaveKey(slotIndex));
+                if (!silent) {
+                    alert(`スロット${slotIndex + 1} のデータを削除しました。`);
+                }
+                updateSlotPreviews(dom.deleteSlotContainer, 'delete');
+                updateSlotPreviews(dom.loadSlotContainer, 'load');
+            }
+        }
+        
+        // スロットプレビューを生成
+        function updateSlotPreviews(container, actionType) {
+            container.innerHTML = ""; 
+            for (let i = 0; i < 3; i++) {
+                const data = getSaveData(i);
+                const slotDiv = document.createElement('div');
+                slotDiv.classList.add('slot-preview');
+                slotDiv.dataset.slot = i;
+                
+                if (data) {
+                    slotDiv.innerHTML = `
+                        <strong>スロット ${i + 1}: ${data.username}</strong><br>
+                        Lv: ${data.level} | キャラ: ${data.charType || 'キャラ未選択'}
+                    `;
+                    if (actionType === 'load') {
+                        if (data.charType) {
+                            slotDiv.onclick = () => loadGame(i);
+                        } else {
+                            slotDiv.classList.add('empty');
+                            slotDiv.innerHTML += " (キャラ未選択)";
+                            slotDiv.onclick = () => alert('キャラクター選択が完了していません。');
+                        }
+                    } else if (actionType === 'delete') {
+                        slotDiv.onclick = () => deleteData(i);
+                    }
+                } else {
+                    slotDiv.classList.add('empty');
+                    slotDiv.textContent = `スロット ${i + 1}: (空)`;
+                    if (actionType === 'load') {
+                        slotDiv.onclick = () => alert('このスロットは空です');
+                    }
+                }
+                container.appendChild(slotDiv);
+            }
+        }
+        
+        function findEmptySlot() {
+            for (let i = 0; i < 3; i++) {
+                if (getSaveData(i) === null) {
+                    return i;
+                }
+            }
+            return -1; // 満杯
+        }
+        
+
+        // --- ゲーム関数 (calculateExpNeeded, generateQuestion, etc.) ---
+
+        function calculateExpNeeded(level) {
+            return level * 100;
+        }
+
+        function generateQuestion() {
+            let n1, n2;
+            const difficultyKey = gameState.difficulty;
+
+            switch (difficultyKey) {
+                case 'level1':
+                    do {
+                        n1 = Math.floor(Math.random() * 8) + 1;
+                        n2 = Math.floor(Math.random() * 8) + 1;
+                    } while (n1 + n2 >= 10);
+                    break;
+                case 'level2':
+                    n1 = Math.floor(Math.random() * 9) + 1;
+                    n2 = Math.floor(Math.random() * 9) + 1;
+                    break;
+                case 'level3':
+                    n1 = Math.floor(Math.random() * 90) + 10;
+                    n2 = Math.floor(Math.random() * 9) + 1;
+                    break;
+                case 'level4':
+                    do {
+                        n1 = Math.floor(Math.random() * 80) + 10;
+                        n2 = Math.floor(Math.random() * 80) + 10;
+                    } while (n1 + n2 >= 100);
+                    break;
+                case 'level5':
+                    n1 = Math.floor(Math.random() * 50) + 50; 
+                    n2 = Math.floor(Math.random() * 50) + 50; 
+                    break;
+                default:
+                    return { num1: 1, num2: 1, answer: 2 }; 
+            }
+            return { num1: n1, num2: n2, answer: n1 + n2 };
+        }
+
+        function setQuestion() {
+            if (!gameState.charType) return; 
+
+            gameState.currentQuestion = generateQuestion();
+            dom.num1.textContent = gameState.currentQuestion.num1;
+            dom.num2.textContent = gameState.currentQuestion.num2;
+            gameState.userAnswer = "";
+            dom.answerDisplay.textContent = "?";
+        }
+
+        function gainExp(expGain) {
+            gameState.exp += expGain;
+            if (gameState.exp >= gameState.expNeeded) {
+                levelUp();
+            }
+            updateDisplay(); 
+        }
+
+        function levelUp() {
+            gameState.level++;
+            gameState.exp = gameState.exp - gameState.expNeeded;
+            gameState.expNeeded = calculateExpNeeded(gameState.level);
+
+            dom.resultMessage.textContent = `🎉 レベルアップ！Lv.${gameState.level}へ！`;
+
+            checkEvolution(true);
+            updateDifficultyOptions();
+        }
+
+        // 進化ロジック (Lv5, Lv10)
+        function checkEvolution(checkAlert = false) {
+            if (!gameState.charType) {
+                dom.charName.textContent = "キャラクター未選択";
+                dom.characterImg.src = "";
+                return; 
+            }
+
+            const charData = CHARACTER_MAP[gameState.charType];
+            let stage = 1;
+            let stageName = "初期";
+            let imageFileName = charData.fileBase; 
+            
+            if (gameState.level >= 10) { 
+                stage = 3;
+                stageName = "最終形態";
+                imageFileName = `${charData.fileBase}_stage3`;
+            } else if (gameState.level >= 5) { 
+                stage = 2;
+                stageName = "進化形態";
+                imageFileName = `${charData.fileBase}_stage2`;
+            }
+
+            // 🚨 画像パスは公開URLに置き換えてください
+            dom.characterImg.src = `images/${imageFileName}.png`; 
+            
+            dom.charName.textContent = `${gameState.username} (Lv.${gameState.level} / ${stageName})`;
+            
+            if (checkAlert && (gameState.level === 5 || gameState.level === 10)) {
+                alert(`おめでとう！${dom.charName.textContent}に進化しました！`);
+            }
+        }
+
+        // 難易度選択肢をレベルに応じて更新
+        function updateDifficultyOptions() {
+            const options = dom.difficultySelect.options;
+            options[2].disabled = true;
+            options[3].disabled = true;
+            options[4].disabled = true;
+
+            if (gameState.level >= 5) {
+                options[2].disabled = false;
+                options[3].disabled = false;
+            }
+
+            if (gameState.level >= 10) {
+                options[4].disabled = false;
+            }
+
+            if (dom.difficultySelect.options[dom.difficultySelect.selectedIndex].disabled) {
+                gameState.difficulty = 'level1';
+                dom.difficultySelect.value = 'level1';
+                dom.resultMessage.textContent = "難易度がレベル1に戻りました。";
+            }
+        }
+
+        // ゲーム画面の表示内容を更新
+        function updateDisplay() {
+            if (dom.level) {
+                dom.level.textContent = gameState.level;
+                dom.exp.textContent = gameState.exp;
+                dom.expNeeded.textContent = gameState.expNeeded;
+                dom.difficultySelect.value = gameState.difficulty;
+                checkEvolution(); 
+            }
+        }
+
+
+        // --- イベントリスナー設定 ---
+
+        // ゲーム画面のイベントリスナー
+        dom.inputPad.addEventListener('click', (e) => {
+            if (!gameState.charType) return;
+            if (e.target.classList.contains('num-btn')) {
+                const val = e.target.getAttribute('data-val');
+                if (gameState.userAnswer.length < 3) {
+                    gameState.userAnswer += val;
+                    dom.answerDisplay.textContent = gameState.userAnswer;
+                }
+            }
+        });
+
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            if (!gameState.charType) return; 
+            gameState.userAnswer = "";
+            dom.answerDisplay.textContent = "?";
+        });
+
+        document.getElementById('submit-btn').addEventListener('click', () => {
+            if (!gameState.charType) return;
+            const correct = gameState.currentQuestion.answer;
+            const submitted = parseInt(gameState.userAnswer);
+
+            if (isNaN(submitted)) {
+                dom.resultMessage.textContent = "数字を入力してください。";
+                return;
+            }
+            
+            const expGain = LEVEL_MAP[gameState.difficulty].exp;
+
+            if (submitted === correct) {
+                dom.resultMessage.style.color = 'green';
+                dom.resultMessage.textContent = `お見事！+${expGain}EXP獲得！`;
+                gainExp(expGain);
+                setQuestion(); 
+            } else {
+                dom.resultMessage.style.color = 'red';
+                dom.resultMessage.textContent = `残念！正解は ${correct} でした。`;
+                setTimeout(() => {
+                    dom.resultMessage.style.color = 'green'; 
+                    setQuestion();
+                }, 1500); 
+            }
+        });
+
+        dom.difficultySelect.addEventListener('change', (e) => {
+            if (!gameState.charType) return;
+            gameState.difficulty = e.target.value;
+            const selectedLevelName = LEVEL_MAP[gameState.difficulty].name;
+            dom.resultMessage.textContent = `${selectedLevelName}に設定されました。`;
+            setQuestion(); 
+        });
+
+        // 🌟 ゲーム画面のセーブボタンは「上書き保存」
+        document.getElementById('save-btn').addEventListener('click', () => {
+             saveGame();
+             alert("現在のスロットに上書きセーブしました。");
+        });
+        
+        // 🌟 ゲーム画面のロードボタンは「タイトルに戻る」
+        document.getElementById('load-btn').addEventListener('click', () => {
+            if (confirm("セーブしていないデータは失われます。タイトルに戻りますか？")) {
+                // gameStateを初期化
+                gameState = { ...initialGameState };
+                dom.appScreen.style.display = 'none';
+                dom.titleScreen.style.display = 'flex';
+            }
+        });
+
+        dom.bgmToggle.addEventListener('click', () => {
+            if (gameState.bgmOn) {
+                dom.bgm.pause();
+                dom.bgmToggle.textContent = "BGM ON/OFF";
+            } else {
+                dom.bgm.play().catch(e => console.log("BGM再生エラー:", e)); 
+                dom.bgmToggle.textContent = "BGM OFF/ON";
+            }
+            gameState.bgmOn = !gameState.bgmOn;
+        });
+
+        // --- タイトル画面とモーダルのイベントリスナー ---
+        
+        document.getElementById('title-new-game').addEventListener('click', () => {
+            dom.titleScreen.style.display = 'none';
+            dom.newGameModal.style.display = 'flex';
+            dom.usernameInput.focus();
+        });
+        
+        document.getElementById('title-load-game').addEventListener('click', () => {
+            updateSlotPreviews(dom.loadSlotContainer, 'load');
+            dom.titleScreen.style.display = 'none';
+            dom.loadModal.style.display = 'flex';
+        });
+
+        document.getElementById('title-delete-data').addEventListener('click', () => {
+            updateSlotPreviews(dom.deleteSlotContainer, 'delete');
+            dom.titleScreen.style.display = 'none';
+            dom.deleteModal.style.display = 'flex';
+        });
+
+        // ロード/削除モーダルのキャンセル
+        document.getElementById('load-cancel').addEventListener('click', () => {
+            dom.loadModal.style.display = 'none';
+            dom.titleScreen.style.display = 'flex';
+        });
+        document.getElementById('delete-cancel').addEventListener('click', () => {
+            dom.deleteModal.style.display = 'none';
+            dom.titleScreen.style.display = 'flex';
+        });
+        
+        // ニューゲームモーダルの処理
+        document.getElementById('new-game-cancel').addEventListener('click', () => {
+            dom.newGameModal.style.display = 'none';
+            dom.titleScreen.style.display = 'flex';
+        });
+        
+        document.getElementById('username-submit').addEventListener('click', () => {
+            const slotIndex = findEmptySlot();
+            if (slotIndex === -1) {
+                alert("セーブスロットが満杯です。データを削除してください。");
+                return;
+            }
+            
+            let username = dom.usernameInput.value.trim();
+            if (username === "") {
+                username = "にゃんこマスター";
+            }
+            
+            // 新しいゲームステートを作成
+            gameState = { ...initialGameState }; 
+            gameState.username = username;
+            gameState.currentSlot = slotIndex;
+            
+            // 新しいデータをスロットに保存 (まだキャラ未選択)
+            saveGame(); 
+            
+            dom.newGameModal.style.display = 'none';
+            dom.charSelectModal.style.display = 'flex';
+        });
+
+        // キャラクター選択イベント (ニューゲームフローの最後)
+        dom.charOptionsContainer.addEventListener('click', (e) => {
+            const optionDiv = e.target.closest('.char-option');
+            if (optionDiv) {
+                const charType = optionDiv.getAttribute('data-char');
+                
+                gameState.charType = charType;
+                
+                // キャラ選択をセーブデータに反映
+                saveGame(); 
+                
+                dom.charSelectModal.style.display = 'none';
+                dom.appScreen.style.display = 'block';
+                
+                updateDisplay();
+                updateDifficultyOptions();
+                setQuestion();
+                
+                alert(`${gameState.username}さん、${CHARACTER_MAP[charType].name}を育成開始！`);
+            }
+        });
+
+        // --- 初期化 ---
+        function init() {
+            // 起動時はタイトル画面を表示
+            dom.titleScreen.style.display = 'flex';
+            dom.appScreen.style.display = 'none';
+            dom.bgm.volume = 0.3;
+        }
+
+        init();
+    </script>
+</body>
+</html>
